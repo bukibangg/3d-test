@@ -1,37 +1,84 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1.0" />
-<title>just time pass — koi pata nahi</title>
-<script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
-<style>
-  html,body {margin:0;height:100%;overflow-y:scroll;background:#000;}
-  body::-webkit-scrollbar {display:none;}
-  .scroll-space {height:300vh;}
-  a-scene {position:fixed;top:0;left:0;width:100%;height:100%;z-index:0;}
-  /* hide any possible VR UI */
-  .a-enter-vr-button,.a-enter-ar-button,.a-enter-vr,
-  .a-enter-ar,.a-enter-vr-modal{display:none!important;opacity:1!important;}
-</style>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+  <title>Just Time Pass — koi pata nahi</title>
+  <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
+  <style>
+    html, body {
+      margin: 0;
+      height: 100%;
+      overflow-y: scroll;
+      background: #000;
+      font-family: monospace;
+      color: white;
+    }
+    body::-webkit-scrollbar { display: none; }
+    .scroll-space { height: 400vh; }
+    a-scene {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      z-index: 0;
+    }
+    .title {
+      position: fixed;
+      top: 20px;
+      width: 100%;
+      text-align: center;
+      font-size: 1.1rem;
+      letter-spacing: 1.5px;
+      opacity: 0.9;
+      z-index: 2;
+      user-select: none;
+      pointer-events: none;
+    }
+    /* hide any VR/AR buttons completely */
+    .a-enter-vr-button, .a-enter-ar-button,
+    .a-enter-vr, .a-enter-ar, .a-enter-vr-modal {
+      display: none !important;
+      opacity: 0 !important;
+    }
+  </style>
 </head>
 <body>
+
+<div class="title">🚀 Just Time Pass — koi pata nahi 😴</div>
 <div class="scroll-space"></div>
 
-<a-scene embedded vr-mode-ui="enabled:false" renderer="antialias:true;colorManagement:true">
-  <!-- lighting -->
-  <a-entity light="type:ambient;intensity:0.8"></a-entity>
-  <a-entity light="type:directional;intensity:1.2" position="3 5 2"></a-entity>
+<a-scene
+  embedded
+  vr-mode-ui="enabled: false"
+  renderer="antialias: true; precision: mediump; colorManagement: true; physicallyCorrectLights: true;"
+>
+  <!-- sky background -->
+  <a-sky color="#02010a"></a-sky>
 
-  <!-- ground -->
-  <a-plane rotation="-90 0 0" width="20" height="20" color="#111"></a-plane>
+  <!-- ambient + directional lights -->
+  <a-entity light="type: ambient; intensity: 0.7"></a-entity>
+  <a-entity light="type: directional; intensity: 1.2; color: #ffffff" position="3 5 2"></a-entity>
+  <a-entity light="type: point; intensity: 0.4; color: #ff00ff" position="-2 2 4"></a-entity>
 
-  <!-- cube -->
-  <a-box id="cube" position="0 1.5 -4" color="#66023C"></a-box>
+  <!-- ground plane -->
+  <a-plane rotation="-90 0 0" width="50" height="50" color="#111"></a-plane>
 
-  <!-- camera -->
+  <!-- main cube -->
+  <a-box id="cube" position="0 1.5 -4" color="#6f00ff" shadow="cast: true; receive: true"></a-box>
+
+  <!-- container for floating cubes -->
+  <a-entity id="miniCubes"></a-entity>
+
+  <!-- floating text -->
+  <a-entity
+    id="floatingText"
+    text="value: Just chill...; color: #ffffff; align: center; width: 4;"
+    position="0 3 -3"
+  ></a-entity>
+
+  <!-- camera rig -->
   <a-entity id="camRig" position="0 1.6 5">
-    <a-camera look-controls="enabled:false" wasd-controls="enabled:false"></a-camera>
+    <a-camera look-controls="enabled: false" wasd-controls="enabled: false"></a-camera>
   </a-entity>
 </a-scene>
 
@@ -40,29 +87,65 @@ document.addEventListener('DOMContentLoaded', () => {
   const cube = document.querySelector('#cube');
   const cam = document.querySelector('#camRig');
   const scrollArea = document.querySelector('.scroll-space');
+  const text = document.querySelector('#floatingText');
+  const miniCubes = document.querySelector('#miniCubes');
+
+  // Generate small floating cubes for ambience
+  for (let i = 0; i < 25; i++) {
+    const el = document.createElement('a-box');
+    const colorHue = Math.floor(Math.random() * 360);
+    el.setAttribute('color', `hsl(${colorHue}, 70%, 60%)`);
+    const s = 0.2 + Math.random() * 0.3;
+    el.setAttribute('depth', s);
+    el.setAttribute('height', s);
+    el.setAttribute('width', s);
+    const x = (Math.random() - 0.5) * 10;
+    const y = Math.random() * 4 + 0.5;
+    const z = -Math.random() * 8 - 2;
+    el.setAttribute('position', `${x} ${y} ${z}`);
+    miniCubes.appendChild(el);
+  }
 
   let time = 0;
-  function loop() {
+
+  function animate() {
     const maxScroll = Math.max(1, scrollArea.scrollHeight - window.innerHeight);
     const progress = window.scrollY / maxScroll;
-
-    // auto-rotation and scroll-based change
     time += 0.015;
+
+    // cube rotation + color
     const rotY = (progress * 360 + time * 100) % 360;
-    const rotX = Math.sin(time) * 45;
+    const rotX = Math.sin(time * 1.5) * 45;
     cube.setAttribute('rotation', `${rotX} ${rotY} 0`);
 
-    // camera gentle motion based on scroll
-    const z = 5 - progress * 6;
-    const y = 1.6 + Math.sin(progress * Math.PI) * 0.5;
+    const hue = (progress * 360 + time * 60) % 360;
+    cube.setAttribute('color', `hsl(${hue}, 80%, 60%)`);
+
+    // camera float motion
+    const z = 5 - progress * 8;
+    const y = 1.6 + Math.sin(progress * Math.PI) * 0.5 + Math.sin(time) * 0.1;
     cam.setAttribute('position', `0 ${y} ${z}`);
 
-    // loop scroll if near bottom
-    if (progress >= 1) window.scrollTo(0, 0.999);
+    // floating text pulse
+    const scale = 1 + Math.sin(time * 2) * 0.1;
+    text.setAttribute('scale', `${scale} ${scale} ${scale}`);
 
-    requestAnimationFrame(loop);
+    // gentle motion for small cubes
+    miniCubes.childNodes.forEach((el, i) => {
+      const offset = time + i * 0.3;
+      el.object3D.position.y += Math.sin(offset) * 0.005; // smooth float
+      el.object3D.rotation.y += 0.01;
+      el.object3D.rotation.x += 0.005;
+    });
+
+    // reset scroll (loop effect)
+    if (progress >= 1) window.scrollTo({ top: 0.999, behavior: 'instant' });
+
+    requestAnimationFrame(animate);
   }
-  loop();
+
+  // start animation loop
+  animate();
 });
 </script>
 </body>
