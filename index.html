@@ -1,63 +1,86 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>3D Test — Working Version</title>
-    <style>
-      /* Styles are perfect, ensure no scrollbars and canvas fills the screen */
-      body { margin: 0; overflow: hidden; }
-      canvas { display: block; }
-    </style>
-  </head>
-  <body>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r165/three.min.js"></script>
-    <script>
-      // Scene setup
-      const scene = new THREE.Scene();
-      scene.background = new THREE.Color(0x111133); // blueish background
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1.0" />
+<title>Scrolling 3D Scene — No VR</title>
+<script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
+<style>
+  html,body{margin:0;height:100%;overflow-y:scroll;background:#000}
+  body::-webkit-scrollbar{display:none}
+  .scroll-space{height:250vh}
+  a-scene{position:fixed;top:0;left:0;width:100%;height:100%;z-index:0}
+  /* hide any VR/AR UI that might be injected */
+  .a-enter-vr-button,.a-enter-vr,.a-enter-ar,.a-enter-ar-button,
+  .a-enter-vr-modal,.a-enter-vr__icon{display:none!important;
+    visibility:hidden!important;pointer-events:none!important;
+    width:0!important;height:0!important;opacity:0!important;}
+</style>
+</head>
+<body>
+<div class="scroll-space"></div>
 
-      const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-      const renderer = new THREE.WebGLRenderer({ antialias: true });
-      renderer.setSize(window.innerWidth, window.innerHeight);
-      document.body.appendChild(renderer.domElement);
+<a-scene
+  embedded
+  vr-mode-ui="enabled:false"
+  renderer="colorManagement:true;physicallyCorrectLights:true"
+  inspector="enabled:false">
 
-      // Create a cube
-      const geometry = new THREE.BoxGeometry(1, 1, 1);
-      // MeshPhongMaterial is good for shiny surfaces affected by light
-      const material = new THREE.MeshPhongMaterial({ color: 0x44ff88 }); 
-      const cube = new THREE.Mesh(geometry, material);
-      scene.add(cube);
+  <!-- Lighting -->
+  <a-entity light="type:ambient;intensity:0.8"></a-entity>
+  <a-entity light="type:directional;color:#fff;intensity:1.2" position="2 4 3"></a-entity>
 
-      // Add lights
+  <!-- Ground -->
+  <a-plane rotation="-90 0 0" width="12" height="12" color="#111"></a-plane>
 
-      // FIX: Added AmbientLight. This ensures all parts of the scene are
-      // at least slightly illuminated, preventing unlit sides from being pitch black.
-      const ambientLight = new THREE.AmbientLight(0x404040, 3); // Soft white light (more intense than default)
-      scene.add(ambientLight);
+  <!-- Cube -->
+  <a-box id="cube" position="0 1.25 -3" color="#4CC3D9" shadow="cast:true"></a-box>
 
-      const directionalLight = new THREE.DirectionalLight(0xffffff, 2.5); // Increased intensity for better visibility
-      directionalLight.position.set(2, 2, 5);
-      scene.add(directionalLight);
+  <!-- Camera -->
+  <a-entity id="cameraRig" position="0 1.6 5">
+    <a-camera look-controls="enabled:false" wasd-controls="enabled:false"></a-camera>
+  </a-entity>
+</a-scene>
 
-      // Camera position
-      camera.position.z = 3;
+<script>
+(function(){
+  const cube=document.querySelector('#cube');
+  const camRig=document.querySelector('#cameraRig');
+  const scrollSpace=document.querySelector('.scroll-space');
 
-      // Animation loop
-      function animate() {
-        requestAnimationFrame(animate);
-        cube.rotation.x += 0.01;
-        cube.rotation.y += 0.01;
-        renderer.render(scene, camera);
-      }
-      animate();
+  // continuously watch for any injected VR UI and hide it
+  const observer=new MutationObserver(()=>{
+    document.querySelectorAll(
+      '.a-enter-vr,.a-enter-vr-button,.a-enter-ar,.a-enter-ar-button'
+    ).forEach(el=>el.style.display='none');
+  });
+  observer.observe(document.body,{childList:true,subtree:true});
 
-      // Resize handler
-      window.addEventListener('resize', () => {
-        camera.aspect = window.innerWidth / window.innerHeight;
-        camera.updateProjectionMatrix();
-        renderer.setSize(window.innerWidth, window.innerHeight);
-      });
-    </script>
-  </body>
+  let lastScroll=window.scrollY;
+  function animate(){
+    const maxScroll=Math.max(1,scrollSpace.clientHeight-window.innerHeight);
+    const scrollTop=Math.max(0,window.scrollY);
+    const progress=Math.min(1,scrollTop/maxScroll);
+
+    // camera motion
+    const camZ=5-progress*5;
+    const camY=1.6+Math.sin(progress*Math.PI)*0.5;
+    camRig.setAttribute('position',`0 ${camY} ${camZ}`);
+
+    // cube rotation
+    const rotY=progress*360;
+    const rotX=progress*180;
+    cube.setAttribute('rotation',`${rotX} ${rotY} 0`);
+
+    // smooth loop reset
+    if(progress>=0.999 && scrollTop!==0){
+      setTimeout(()=>window.scrollTo({top:0,behavior:'instant'}),50);
+    }
+    lastScroll=scrollTop;
+    requestAnimationFrame(animate);
+  }
+  requestAnimationFrame(animate);
+})();
+</script>
+</body>
 </html>
